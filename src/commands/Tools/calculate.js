@@ -17,6 +17,8 @@ const MAX_HISTORY = 5;
 export { calculationContexts };
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName("calculate")
         .setDescription("Evaluate a mathematical expression")
