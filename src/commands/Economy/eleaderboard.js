@@ -6,6 +6,8 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { getEconomyPrefix } from '../../utils/database.js';
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName("eleaderboard")
         .setDescription("View the server's top 10 richest users.")
