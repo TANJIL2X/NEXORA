@@ -1,4 +1,4 @@
-```javascript
+
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const COMMANDS_PATH = path.resolve(__dirname, '../../commands');
+
 const MAX_COMMANDS = 100;
 
 const GUILD_INSTALL = 0;
@@ -26,8 +27,11 @@ function getSubcommandInfo(commandData) {
     for (const option of commandData.options || []) {
         if (option.type === 1) {
             result.push(option.name);
-        } else if (option.type === 2) {
-            for (const subOption of option.options || []) {
+        } else if (
+            option.type === 2 &&
+            Array.isArray(option.options)
+        ) {
+            for (const subOption of option.options) {
                 if (subOption.type === 1) {
                     result.push(
                         option.name + '/' + subOption.name
@@ -60,7 +64,9 @@ async function getAllFiles(directory, result = []) {
         const fullPath = path.join(directory, entry.name);
 
         if (entry.isDirectory()) {
-            if (entry.name === 'modules') continue;
+            if (entry.name === 'modules') {
+                continue;
+            }
 
             await getAllFiles(fullPath, result);
         } else if (
@@ -75,20 +81,21 @@ async function getAllFiles(directory, result = []) {
 }
 
 /**
- * Loads all command modules.
- * This named export is required by src/app.js.
+ * Load all command modules.
  */
 export async function loadCommands(client) {
     const commands = new Collection();
     const files = await getAllFiles(COMMANDS_PATH);
-    const names = new Set();
+    const seenNames = new Set();
 
     logger.info('Found ' + files.length + ' command files.');
 
     for (const filePath of files) {
         try {
-            const moduleUrl = pathToFileURL(filePath).href;
-            const imported = await import(moduleUrl);
+            const imported = await import(
+                pathToFileURL(filePath).href
+            );
+
             const command = imported.default || imported;
 
             if (
@@ -97,7 +104,7 @@ export async function loadCommands(client) {
                 typeof command.data.toJSON !== 'function'
             ) {
                 logger.warn(
-                    'Invalid command file: ' + filePath
+                    'Skipping invalid command file: ' + filePath
                 );
                 continue;
             }
@@ -111,12 +118,12 @@ export async function loadCommands(client) {
                 continue;
             }
 
-            if (names.has(name)) {
+            if (seenNames.has(name)) {
                 logger.warn('Duplicate command skipped: ' + name);
                 continue;
             }
 
-            names.add(name);
+            seenNames.add(name);
 
             command.category = path.basename(
                 path.dirname(filePath)
@@ -129,7 +136,7 @@ export async function loadCommands(client) {
             logger.info('Loaded command: ' + name);
         } catch (error) {
             logger.error(
-                'Could not load command: ' + filePath,
+                'Failed to load command: ' + filePath,
                 error
             );
         }
@@ -137,23 +144,25 @@ export async function loadCommands(client) {
 
     client.commands = commands;
 
-    logger.info('Loaded ' + commands.size + ' commands.');
+    logger.info(
+        'Loaded ' + commands.size + ' commands successfully.'
+    );
 
     return commands;
 }
 
 /**
- * Builds and validates the Discord command payload.
+ * Prepare commands for Discord API registration.
  */
 export function prepareCommandsForRegistration(client) {
     if (!client.commands) {
         throw new Error(
-            'Commands are not loaded. Run loadCommands(client) first.'
+            'Commands are not loaded. Call loadCommands(client) first.'
         );
     }
 
     const commands = [];
-    const names = new Set();
+    const seenNames = new Set();
 
     for (const command of client.commands.values()) {
         if (
@@ -167,16 +176,16 @@ export function prepareCommandsForRegistration(client) {
         const json = command.data.toJSON();
 
         if (!json.name) {
-            logger.warn('Skipping a command without a name.');
+            logger.warn('Skipping command without a name.');
             continue;
         }
 
-        if (names.has(json.name)) {
-            logger.warn('Duplicate command skipped: ' + json.name);
+        if (seenNames.has(json.name)) {
+            logger.warn('Duplicate command: ' + json.name);
             continue;
         }
 
-        names.add(json.name);
+        seenNames.add(json.name);
 
         if (command.dmEnabled === true) {
             json.integration_types = [
@@ -199,8 +208,8 @@ export function prepareCommandsForRegistration(client) {
 
     if (commands.length > MAX_COMMANDS) {
         throw new Error(
-            'Found ' + commands.length +
-            ' commands; Discord allows at most ' + MAX_COMMANDS + '.'
+            'Discord command limit exceeded: ' +
+            commands.length + '/' + MAX_COMMANDS
         );
     }
 
@@ -217,7 +226,7 @@ export function prepareCommandsForRegistration(client) {
 }
 
 /**
- * Registers global slash commands.
+ * Register global slash commands.
  */
 export async function registerCommands(client, options = {}) {
     const clientId =
@@ -234,13 +243,13 @@ export async function registerCommands(client, options = {}) {
 
     if (!clientId) {
         throw new Error(
-            'Application ID is missing. Check config/bot.js.'
+            'Application ID is missing in bot configuration.'
         );
     }
 
     if (!token) {
         throw new Error(
-            'Bot token is missing. Check config/bot.js or DISCORD_TOKEN.'
+            'Bot token is missing from configuration or DISCORD_TOKEN.'
         );
     }
 
@@ -269,7 +278,7 @@ export async function registerCommands(client, options = {}) {
 }
 
 /**
- * Reloads one command module.
+ * Reload one command.
  */
 export async function reloadCommand(client, commandName) {
     if (!client.commands) {
@@ -283,6 +292,7 @@ export async function reloadCommand(client, commandName) {
     }
 
     const url = pathToFileURL(previous.filePath);
+
     url.searchParams.set('reload', String(Date.now()));
 
     const imported = await import(url.href);
@@ -294,7 +304,7 @@ export async function reloadCommand(client, commandName) {
         typeof command.data.toJSON !== 'function'
     ) {
         throw new Error(
-            'The reloaded command is invalid: ' + commandName
+            'Reloaded command is invalid: ' + commandName
         );
     }
 
@@ -308,4 +318,3 @@ export async function reloadCommand(client, commandName) {
 
     return command;
 }
-```
