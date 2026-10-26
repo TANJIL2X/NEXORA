@@ -7,6 +7,8 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 import EconomyService from '../../services/economyService.js';
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('pay')
         .setDescription('Pay another user some of your cash')
