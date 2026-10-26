@@ -9,6 +9,8 @@ const activeCountdowns = new Map();
 export { activeCountdowns };
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName("countdown")
         .setDescription("Start a countdown timer")
