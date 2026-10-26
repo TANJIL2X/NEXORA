@@ -5,6 +5,8 @@ import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHan
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('withdraw')
         .setDescription('Withdraw money from your bank to your wallet')
