@@ -4,6 +4,8 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 import economyDashboard from './modules/economy_dashboard.js';
 
 export default {
+    dmEnabled: true,
+    
     slashOnly: true,
     data: new SlashCommandBuilder()
         .setName('economy')
