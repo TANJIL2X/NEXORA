@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 const SUPPORT_SERVER_URL = "https://discord.gg/QnWNz2dKCE";
 export default {
+    dmEnabled: true,
     data: new SlashCommandBuilder()
     .setName("support")
     .setDescription("Get link to the support server"),
