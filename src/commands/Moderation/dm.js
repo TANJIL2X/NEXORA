@@ -7,6 +7,7 @@ import { sanitizeMarkdown } from '../../utils/validation.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 export default {
+    dmEnabled: true,
     data: new SlashCommandBuilder()
         .setName("dm")
         .setDescription("Send a direct message to a user (Staff only)")
