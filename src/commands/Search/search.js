@@ -6,6 +6,7 @@ import searchGoogle from './modules/search_google.js';
 import searchUrban from './modules/search_urban.js';
 
 export default {
+    dmEnabled: true,
     data: new SlashCommandBuilder()
         .setName('search')
         .setDescription('Search the web and dictionaries')
