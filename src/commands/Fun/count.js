@@ -15,6 +15,8 @@ import { logger } from '../../utils/logger.js';
 
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 export default {
+  dmEnabled: true,
+  
   data: new SlashCommandBuilder()
     .setName('count')
     .setDescription('Manage the server counting game')
