@@ -35,6 +35,7 @@ function getApplicationStatusPresentation(statusValue) {
 }
 
 export default {
+    dmEnabled: true,
     slashOnly: true,
     data: new SlashCommandBuilder()
         .setName("apply")
