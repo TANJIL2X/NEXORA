@@ -13,6 +13,8 @@ const DAILY_AMOUNT = botConfig.economy?.dailyAmount ?? 100;
 const PREMIUM_BONUS_PERCENTAGE = 0.1;
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('daily')
         .setDescription('Claim your daily cash reward'),
