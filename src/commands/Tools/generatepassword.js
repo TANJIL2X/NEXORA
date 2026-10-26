@@ -6,6 +6,8 @@ import { logger } from '../../utils/logger.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('generatepassword')
         .setDescription('Generate a strong, random password')
