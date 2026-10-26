@@ -1,14 +1,15 @@
 ```javascript
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import {
     Collection,
+    REST,
     Routes
 } from 'discord.js';
 import {
     fileURLToPath,
     pathToFileURL
-} from 'url';
+} from 'node:url';
 
 import { logger } from '../../utils/logger.js';
 import botConfig from '../../config/bot.js';
@@ -16,8 +17,8 @@ import botConfig from '../../config/bot.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const COMMANDS_PATH = path.resolve(__dirname, '../../commands');
 const MAX_COMMANDS = 100;
-const COMMAND_COUNT_WARN_THRESHOLD = 90;
 
 const GUILD_INSTALL = 0;
 const USER_INSTALL = 1;
@@ -27,21 +28,22 @@ const BOT_DM_CONTEXT = 1;
 const PRIVATE_CHANNEL_CONTEXT = 2;
 
 /**
- * Extract slash-command subcommands.
+ * Return slash-command subcommands.
  */
 function getSubcommandInfo(commandData) {
-    const subcommands = [];
+    const result = [];
     const options = commandData.options || [];
 
     for (const option of options) {
         if (option.type === 1) {
-            subcommands.push(option.name);
-        }
-
-        if (option.type === 2 && Array.isArray(option.options)) {
+            result.push(option.name);
+        } else if (
+            option.type === 2 &&
+            Array.isArray(option.options)
+        ) {
             for (const subOption of option.options) {
                 if (subOption.type === 1) {
-                    subcommands.push(
+                    result.push(
                         option.name + '/' + subOption.name
                     );
                 }
@@ -49,13 +51,13 @@ function getSubcommandInfo(commandData) {
         }
     }
 
-    return subcommands;
+    return result;
 }
 
 /**
- * Find all JavaScript files recursively.
+ * Find JavaScript files recursively.
  */
-async function getAllFiles(directory, fileList = []) {
+async function getAllFiles(directory, result = []) {
     let entries;
 
     try {
@@ -65,147 +67,123 @@ async function getAllFiles(directory, fileList = []) {
     } catch (error) {
         if (error.code === 'ENOENT') {
             logger.warn(
-                'Command directory does not exist: ' + directory
+                'Directory not found: ' + directory
             );
-
-            return fileList;
+            return result;
         }
 
         throw error;
     }
 
     for (const entry of entries) {
-        const filePath = path.join(directory, entry.name);
+        const fullPath = path.join(directory, entry.name);
 
         if (entry.isDirectory()) {
             if (entry.name === 'modules') {
                 continue;
             }
 
-            await getAllFiles(filePath, fileList);
+            await getAllFiles(fullPath, result);
         } else if (
             entry.isFile() &&
             entry.name.endsWith('.js')
         ) {
-            fileList.push(filePath);
+            result.push(fullPath);
         }
     }
 
-    return fileList;
+    return result;
 }
 
 /**
- * Load command files into client.commands.
+ * Load commands.
+ *
+ * IMPORTANT: This named export is required by src/app.js.
  */
 export async function loadCommands(client) {
-    client.commands = new Collection();
-
-    const commandsPath = path.resolve(
-        __dirname,
-        '../../commands'
-    );
-
-    const commandFiles = await getAllFiles(commandsPath);
+    const commands = new Collection();
+    const files = await getAllFiles(COMMANDS_PATH);
+    const seenNames = new Set();
 
     logger.info(
-        'Found ' + commandFiles.length + ' command files to load.'
+        'Found ' + files.length + ' command files.'
     );
 
-    const uniqueCommandNames = new Set();
-
-    for (const filePath of commandFiles) {
+    for (const filePath of files) {
         try {
-            const normalizedPath = filePath.replace(/\\/g, '/');
-
-            const commandModule = await import(
-                pathToFileURL(filePath).href
-            );
+            const moduleUrl = pathToFileURL(filePath).href;
+            const loadedModule = await import(moduleUrl);
 
             const command =
-                commandModule.default || commandModule;
-
-            if (!command.data || !command.execute) {
-                logger.warn(
-                    'Skipping command without data or execute: ' +
-                    normalizedPath
-                );
-
-                continue;
-            }
+                loadedModule.default || loadedModule;
 
             if (
-                typeof command.data.name !== 'string' ||
+                !command.data ||
+                typeof command.execute !== 'function' ||
                 typeof command.data.toJSON !== 'function'
             ) {
                 logger.warn(
-                    'Invalid command data in: ' + normalizedPath
+                    'Skipping invalid command file: ' + filePath
                 );
-
                 continue;
             }
 
-            const commandName = command.data.name;
+            const name = command.data.name;
 
-            if (uniqueCommandNames.has(commandName)) {
+            if (!name || typeof name !== 'string') {
                 logger.warn(
-                    'Skipping duplicate command: ' + commandName
+                    'Command has no valid name: ' + filePath
                 );
-
                 continue;
             }
 
-            uniqueCommandNames.add(commandName);
+            if (seenNames.has(name)) {
+                logger.warn(
+                    'Duplicate command skipped: ' + name
+                );
+                continue;
+            }
+
+            seenNames.add(name);
 
             command.category = path.basename(
                 path.dirname(filePath)
             );
 
-            command.filePath = normalizedPath;
+            command.filePath = filePath.replace(/\\/g, '/');
 
-            client.commands.set(commandName, command);
+            commands.set(name, command);
 
-            const commandJson = command.data.toJSON();
-            const subcommands = getSubcommandInfo(commandJson);
-
-            logger.info(
-                'Loaded command: ' + commandName +
-                ' from ' + normalizedPath
-            );
-
-            if (subcommands.length > 0) {
-                logger.info(
-                    'Subcommands: ' + subcommands.join(', ')
-                );
-            }
+            logger.info('Loaded command: ' + name);
         } catch (error) {
             logger.error(
-                'Failed to load command from ' + filePath,
+                'Failed to load command: ' + filePath,
                 error
             );
         }
     }
 
+    client.commands = commands;
+
     logger.info(
-        'Successfully loaded ' + client.commands.size + ' commands.'
+        'Loaded ' + commands.size + ' commands successfully.'
     );
 
-    return client.commands;
+    return commands;
 }
 
 /**
- * Prepare commands for Discord API registration.
+ * Build and validate command registration payload.
  */
-function collectCommandPayloads(client) {
-    const commands = [];
-    const registeredNames = new Set();
-
-    let totalSubcommands = 0;
-
+export function prepareCommandsForRegistration(client) {
     if (!client.commands) {
         throw new Error(
-            'client.commands is missing. Call loadCommands(client) first.'
+            'Commands are not loaded. Call loadCommands(client) first.'
         );
     }
+
+    const payload = [];
+    const seenNames = new Set();
 
     for (const command of client.commands.values()) {
         if (
@@ -215,138 +193,76 @@ function collectCommandPayloads(client) {
             logger.warn(
                 'Skipping command with invalid data.'
             );
-
             continue;
         }
 
-        const commandName = command.data.name;
+        const json = command.data.toJSON();
 
-        if (registeredNames.has(commandName)) {
+        if (!json.name) {
             logger.warn(
-                'Skipping duplicate registration: ' + commandName
+                'Skipping command without a name.'
             );
-
             continue;
         }
 
-        registeredNames.add(commandName);
+        if (seenNames.has(json.name)) {
+            logger.warn(
+                'Duplicate command skipped: ' + json.name
+            );
+            continue;
+        }
 
-        const commandJson = command.data.toJSON();
+        seenNames.add(json.name);
 
-        /*
-         * Commands with dmEnabled: true can be used in
-         * supported DMs and user-installed contexts.
-         *
-         * Other commands are registered for guild installation.
-         */
         if (command.dmEnabled === true) {
-            commandJson.integration_types = [
+            json.integration_types = [
                 GUILD_INSTALL,
                 USER_INSTALL
             ];
 
-            commandJson.contexts = [
+            json.contexts = [
                 GUILD_CONTEXT,
                 BOT_DM_CONTEXT,
                 PRIVATE_CHANNEL_CONTEXT
             ];
         } else {
-            commandJson.integration_types = [
+            json.integration_types = [
                 GUILD_INSTALL
             ];
 
-            commandJson.contexts = [
+            json.contexts = [
                 GUILD_CONTEXT
             ];
         }
 
-        commands.push(commandJson);
+        payload.push(json);
+    }
 
-        totalSubcommands += getSubcommandInfo(
-            commandJson
-        ).length;
+    if (payload.length > MAX_COMMANDS) {
+        throw new Error(
+            'Too many top-level commands: ' +
+            payload.length +
+            '. Discord allows at most ' +
+            MAX_COMMANDS + '.'
+        );
     }
 
     return {
-        commands,
-        totalSubcommands
+        commands: payload,
+        totalSubcommands: payload.reduce(
+            (total, command) =>
+                total + getSubcommandInfo(command).length,
+            0
+        )
     };
 }
 
 /**
- * Validate the number of registered commands.
+ * Register global application commands.
  */
-function validateCommands(commands) {
-    if (!Array.isArray(commands)) {
-        throw new TypeError(
-            'Commands must be provided as an array.'
-        );
-    }
-
-    if (commands.length > MAX_COMMANDS) {
-        throw new Error(
-            'Discord allows at most ' + MAX_COMMANDS +
-            ' top-level application commands. Found: ' +
-            commands.length
-        );
-    }
-
-    if (commands.length >= COMMAND_COUNT_WARN_THRESHOLD) {
-        logger.warn(
-            'You are approaching the Discord command limit: ' +
-            commands.length + '/' + MAX_COMMANDS
-        );
-    }
-
-    const names = new Set();
-
-    for (const command of commands) {
-        if (!command || typeof command.name !== 'string') {
-            throw new Error(
-                'A command is missing its name.'
-            );
-        }
-
-        if (names.has(command.name)) {
-            throw new Error(
-                'Duplicate command name: ' + command.name
-            );
-        }
-
-        names.add(command.name);
-    }
-
-    return true;
-}
-
-/**
- * Prepare and validate the command payload.
- */
-export function prepareCommandsForRegistration(client) {
-    const result = collectCommandPayloads(client);
-
-    validateCommands(result.commands);
-
-    logger.info(
-        'Prepared ' + result.commands.length +
-        ' commands and ' + result.totalSubcommands +
-        ' subcommands for registration.'
-    );
-
-    return result;
-}
-
-/**
- * Register global application commands with Discord.
- */
-async function registerGlobalCommands(
-    client,
-    clientId,
-    commands,
-    totalSubcommands
-) {
-    const applicationId =
-        clientId ||
+export async function registerCommands(client, options = {}) {
+    const clientId =
+        options.clientId ||
         client.application?.id ||
         client.user?.id ||
         botConfig.clientId ||
@@ -357,7 +273,7 @@ async function registerGlobalCommands(
         botConfig.discordToken ||
         process.env.DISCORD_TOKEN;
 
-    if (!applicationId) {
+    if (!clientId) {
         throw new Error(
             'Application ID is missing. Check config/bot.js.'
         );
@@ -365,139 +281,80 @@ async function registerGlobalCommands(
 
     if (!token) {
         throw new Error(
-            'Discord bot token is missing. Check config/bot.js or DISCORD_TOKEN.'
+            'Bot token is missing. Check config/bot.js or DISCORD_TOKEN.'
         );
     }
 
-    validateCommands(commands);
+    const {
+        commands,
+        totalSubcommands
+    } = prepareCommandsForRegistration(client);
 
-    const rest = client.rest;
-
-    if (!rest || typeof rest.setToken !== 'function') {
-        throw new Error(
-            'Discord REST client is unavailable. Check your discord.js setup.'
-        );
-    }
-
-    rest.setToken(token);
+    const rest = new REST({ version: '10' }).setToken(token);
 
     logger.info(
         'Registering ' + commands.length +
-        ' global commands with Discord.'
+        ' global slash commands...'
     );
 
-    const registeredCommands = await rest.put(
-        Routes.applicationCommands(applicationId),
-        {
-            body: commands
-        }
+    const registered = await rest.put(
+        Routes.applicationCommands(clientId),
+        { body: commands }
     );
 
     logger.info(
-        'Successfully registered ' +
-        registeredCommands.length +
-        ' global commands and ' +
-        totalSubcommands +
+        'Registered ' + registered.length +
+        ' global commands and ' + totalSubcommands +
         ' subcommands.'
     );
 
-    return registeredCommands;
+    return registered;
 }
 
 /**
- * Public function imported by app.js.
- */
-export async function registerCommands(client, options = {}) {
-    try {
-        const result = prepareCommandsForRegistration(client);
-
-        return await registerGlobalCommands(
-            client,
-            options.clientId || null,
-            result.commands,
-            result.totalSubcommands
-        );
-    } catch (error) {
-        logger.error(
-            'Error registering application commands:',
-            error
-        );
-
-        throw error;
-    }
-}
-
-/**
- * Reload a command by its registered command name.
+ * Reload a previously loaded command.
  */
 export async function reloadCommand(client, commandName) {
     if (!client.commands) {
         throw new Error(
-            'Commands have not been loaded yet.'
+            'Commands have not been loaded.'
         );
     }
 
-    const existingCommand = client.commands.get(commandName);
+    const oldCommand = client.commands.get(commandName);
 
-    if (!existingCommand) {
+    if (!oldCommand || !oldCommand.filePath) {
         throw new Error(
             'Command not found: ' + commandName
         );
     }
 
-    if (!existingCommand.filePath) {
-        throw new Error(
-            'Command file path is missing for: ' + commandName
-        );
-    }
+    const url = pathToFileURL(oldCommand.filePath);
+    url.searchParams.set('update', String(Date.now()));
 
-    const fileUrl = pathToFileURL(
-        existingCommand.filePath
-    );
-
-    fileUrl.searchParams.set(
-        'reload',
-        String(Date.now())
-    );
-
-    const commandModule = await import(fileUrl.href);
-
-    const newCommand =
-        commandModule.default || commandModule;
+    const loadedModule = await import(url.href);
+    const command = loadedModule.default || loadedModule;
 
     if (
-        !newCommand.data ||
-        typeof newCommand.execute !== 'function' ||
-        typeof newCommand.data.toJSON !== 'function'
+        !command.data ||
+        typeof command.execute !== 'function' ||
+        typeof command.data.toJSON !== 'function'
     ) {
         throw new Error(
-            'Reloaded command is missing data or execute: ' +
-            commandName
+            'Reloaded command is invalid: ' + commandName
         );
     }
 
-    const newCommandName = newCommand.data.name;
-
-    if (
-        newCommandName !== commandName &&
-        client.commands.has(newCommandName)
-    ) {
-        throw new Error(
-            'Another command already uses the name: ' +
-            newCommandName
-        );
-    }
-
-    newCommand.category = existingCommand.category;
-    newCommand.filePath = existingCommand.filePath;
+    command.category = oldCommand.category;
+    command.filePath = oldCommand.filePath;
 
     client.commands.delete(commandName);
-    client.commands.set(newCommandName, newCommand);
+    client.commands.set(command.data.name, command);
 
     logger.info(
-        'Successfully reloaded command: ' + newCommandName
+        'Reloaded command: ' + command.data.name
     );
 
-    return newCommand;
+    return command;
 }
 ```
