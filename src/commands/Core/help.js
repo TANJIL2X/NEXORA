@@ -140,6 +140,7 @@ export async function createInitialHelpMenu(client) {
 }
 
 export default {
+    dmEnabled: true,
     slashOnly: true,
     data: new SlashCommandBuilder()
         .setName("help")
