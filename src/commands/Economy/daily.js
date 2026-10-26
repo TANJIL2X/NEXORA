@@ -9,7 +9,7 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { botConfig } from '../../config/bot.js';
 
 const DAILY_COOLDOWN = 24 * 60 * 60 * 1000;
-const DAILY_AMOUNT = botConfig.economy?.dailyAmount ?? 100000000000000000000;
+const DAILY_AMOUNT = botConfig.economy?.dailyAmount ?? 100;
 const PREMIUM_BONUS_PERCENTAGE = 0.1;
 
 export default {
