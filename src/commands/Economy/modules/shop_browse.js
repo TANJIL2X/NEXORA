@@ -5,6 +5,7 @@ import { logger } from '../../../utils/logger.js';
 import { handleInteractionError } from '../../../utils/errorHandler.js';
 
 export default {
+    dmEnabled: true,
     async execute(interaction, config, client) {
         try {
             const TARGET_MAX_PAGES = 3;
