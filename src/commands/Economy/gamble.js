@@ -11,6 +11,8 @@ const PAYOUT_MULTIPLIER = 2.0;
 const GAMBLE_COOLDOWN = 5 * 60 * 1000;
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('gamble')
         .setDescription('Gamble your money for a chance to win more')
