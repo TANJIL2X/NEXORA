@@ -17,6 +17,8 @@ const CRIME_TYPES = [
 ];
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('crime')
         .setDescription('Commit a crime to earn money (risky)')
