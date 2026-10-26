@@ -5,6 +5,8 @@ import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
     .setName("flip")
     .setDescription("Flips a coin (Heads or Tails)."),
