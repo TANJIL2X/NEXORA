@@ -137,6 +137,7 @@ async function refreshDashboard(rootInteraction, settings, roles, guildId, clien
 }
 
 export default {
+    dmEnabled: true,
     prefixOnly: false,
     async execute(interaction, config, client, selectedAppName = null) {
         try {
