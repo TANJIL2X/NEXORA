@@ -603,6 +603,7 @@ async function handleSettingModalSubmit(selectInteraction, rootInteraction, sett
 }
 
 export default {
+    dmEnabled: true,
     slashOnly: true,
     data: new SlashCommandBuilder()
         .setName('configwizard')
