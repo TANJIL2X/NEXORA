@@ -1,15 +1,8 @@
 ```javascript
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {
-    Collection,
-    REST,
-    Routes
-} from 'discord.js';
-import {
-    fileURLToPath,
-    pathToFileURL
-} from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { Collection, REST, Routes } from 'discord.js';
 
 import { logger } from '../../utils/logger.js';
 import botConfig from '../../config/bot.js';
@@ -27,21 +20,14 @@ const GUILD_CONTEXT = 0;
 const BOT_DM_CONTEXT = 1;
 const PRIVATE_CHANNEL_CONTEXT = 2;
 
-/**
- * Return slash-command subcommands.
- */
 function getSubcommandInfo(commandData) {
     const result = [];
-    const options = commandData.options || [];
 
-    for (const option of options) {
+    for (const option of commandData.options || []) {
         if (option.type === 1) {
             result.push(option.name);
-        } else if (
-            option.type === 2 &&
-            Array.isArray(option.options)
-        ) {
-            for (const subOption of option.options) {
+        } else if (option.type === 2) {
+            for (const subOption of option.options || []) {
                 if (subOption.type === 1) {
                     result.push(
                         option.name + '/' + subOption.name
@@ -54,9 +40,6 @@ function getSubcommandInfo(commandData) {
     return result;
 }
 
-/**
- * Find JavaScript files recursively.
- */
 async function getAllFiles(directory, result = []) {
     let entries;
 
@@ -66,9 +49,7 @@ async function getAllFiles(directory, result = []) {
         });
     } catch (error) {
         if (error.code === 'ENOENT') {
-            logger.warn(
-                'Directory not found: ' + directory
-            );
+            logger.warn('Directory not found: ' + directory);
             return result;
         }
 
@@ -79,9 +60,7 @@ async function getAllFiles(directory, result = []) {
         const fullPath = path.join(directory, entry.name);
 
         if (entry.isDirectory()) {
-            if (entry.name === 'modules') {
-                continue;
-            }
+            if (entry.name === 'modules') continue;
 
             await getAllFiles(fullPath, result);
         } else if (
@@ -96,26 +75,21 @@ async function getAllFiles(directory, result = []) {
 }
 
 /**
- * Load commands.
- *
- * IMPORTANT: This named export is required by src/app.js.
+ * Loads all command modules.
+ * This named export is required by src/app.js.
  */
 export async function loadCommands(client) {
     const commands = new Collection();
     const files = await getAllFiles(COMMANDS_PATH);
-    const seenNames = new Set();
+    const names = new Set();
 
-    logger.info(
-        'Found ' + files.length + ' command files.'
-    );
+    logger.info('Found ' + files.length + ' command files.');
 
     for (const filePath of files) {
         try {
             const moduleUrl = pathToFileURL(filePath).href;
-            const loadedModule = await import(moduleUrl);
-
-            const command =
-                loadedModule.default || loadedModule;
+            const imported = await import(moduleUrl);
+            const command = imported.default || imported;
 
             if (
                 !command.data ||
@@ -123,28 +97,26 @@ export async function loadCommands(client) {
                 typeof command.data.toJSON !== 'function'
             ) {
                 logger.warn(
-                    'Skipping invalid command file: ' + filePath
+                    'Invalid command file: ' + filePath
                 );
                 continue;
             }
 
             const name = command.data.name;
 
-            if (!name || typeof name !== 'string') {
+            if (typeof name !== 'string' || !name) {
                 logger.warn(
-                    'Command has no valid name: ' + filePath
+                    'Command has an invalid name: ' + filePath
                 );
                 continue;
             }
 
-            if (seenNames.has(name)) {
-                logger.warn(
-                    'Duplicate command skipped: ' + name
-                );
+            if (names.has(name)) {
+                logger.warn('Duplicate command skipped: ' + name);
                 continue;
             }
 
-            seenNames.add(name);
+            names.add(name);
 
             command.category = path.basename(
                 path.dirname(filePath)
@@ -157,7 +129,7 @@ export async function loadCommands(client) {
             logger.info('Loaded command: ' + name);
         } catch (error) {
             logger.error(
-                'Failed to load command: ' + filePath,
+                'Could not load command: ' + filePath,
                 error
             );
         }
@@ -165,54 +137,46 @@ export async function loadCommands(client) {
 
     client.commands = commands;
 
-    logger.info(
-        'Loaded ' + commands.size + ' commands successfully.'
-    );
+    logger.info('Loaded ' + commands.size + ' commands.');
 
     return commands;
 }
 
 /**
- * Build and validate command registration payload.
+ * Builds and validates the Discord command payload.
  */
 export function prepareCommandsForRegistration(client) {
     if (!client.commands) {
         throw new Error(
-            'Commands are not loaded. Call loadCommands(client) first.'
+            'Commands are not loaded. Run loadCommands(client) first.'
         );
     }
 
-    const payload = [];
-    const seenNames = new Set();
+    const commands = [];
+    const names = new Set();
 
     for (const command of client.commands.values()) {
         if (
             !command.data ||
             typeof command.data.toJSON !== 'function'
         ) {
-            logger.warn(
-                'Skipping command with invalid data.'
-            );
+            logger.warn('Skipping command with invalid data.');
             continue;
         }
 
         const json = command.data.toJSON();
 
         if (!json.name) {
-            logger.warn(
-                'Skipping command without a name.'
-            );
+            logger.warn('Skipping a command without a name.');
             continue;
         }
 
-        if (seenNames.has(json.name)) {
-            logger.warn(
-                'Duplicate command skipped: ' + json.name
-            );
+        if (names.has(json.name)) {
+            logger.warn('Duplicate command skipped: ' + json.name);
             continue;
         }
 
-        seenNames.add(json.name);
+        names.add(json.name);
 
         if (command.dmEnabled === true) {
             json.integration_types = [
@@ -226,39 +190,34 @@ export function prepareCommandsForRegistration(client) {
                 PRIVATE_CHANNEL_CONTEXT
             ];
         } else {
-            json.integration_types = [
-                GUILD_INSTALL
-            ];
-
-            json.contexts = [
-                GUILD_CONTEXT
-            ];
+            json.integration_types = [GUILD_INSTALL];
+            json.contexts = [GUILD_CONTEXT];
         }
 
-        payload.push(json);
+        commands.push(json);
     }
 
-    if (payload.length > MAX_COMMANDS) {
+    if (commands.length > MAX_COMMANDS) {
         throw new Error(
-            'Too many top-level commands: ' +
-            payload.length +
-            '. Discord allows at most ' +
-            MAX_COMMANDS + '.'
+            'Found ' + commands.length +
+            ' commands; Discord allows at most ' + MAX_COMMANDS + '.'
         );
     }
 
+    const totalSubcommands = commands.reduce(
+        (total, command) =>
+            total + getSubcommandInfo(command).length,
+        0
+    );
+
     return {
-        commands: payload,
-        totalSubcommands: payload.reduce(
-            (total, command) =>
-                total + getSubcommandInfo(command).length,
-            0
-        )
+        commands,
+        totalSubcommands
     };
 }
 
 /**
- * Register global application commands.
+ * Registers global slash commands.
  */
 export async function registerCommands(client, options = {}) {
     const clientId =
@@ -293,8 +252,7 @@ export async function registerCommands(client, options = {}) {
     const rest = new REST({ version: '10' }).setToken(token);
 
     logger.info(
-        'Registering ' + commands.length +
-        ' global slash commands...'
+        'Registering ' + commands.length + ' global commands.'
     );
 
     const registered = await rest.put(
@@ -304,36 +262,31 @@ export async function registerCommands(client, options = {}) {
 
     logger.info(
         'Registered ' + registered.length +
-        ' global commands and ' + totalSubcommands +
-        ' subcommands.'
+        ' commands and ' + totalSubcommands + ' subcommands.'
     );
 
     return registered;
 }
 
 /**
- * Reload a previously loaded command.
+ * Reloads one command module.
  */
 export async function reloadCommand(client, commandName) {
     if (!client.commands) {
-        throw new Error(
-            'Commands have not been loaded.'
-        );
+        throw new Error('Commands have not been loaded.');
     }
 
-    const oldCommand = client.commands.get(commandName);
+    const previous = client.commands.get(commandName);
 
-    if (!oldCommand || !oldCommand.filePath) {
-        throw new Error(
-            'Command not found: ' + commandName
-        );
+    if (!previous || !previous.filePath) {
+        throw new Error('Command not found: ' + commandName);
     }
 
-    const url = pathToFileURL(oldCommand.filePath);
-    url.searchParams.set('update', String(Date.now()));
+    const url = pathToFileURL(previous.filePath);
+    url.searchParams.set('reload', String(Date.now()));
 
-    const loadedModule = await import(url.href);
-    const command = loadedModule.default || loadedModule;
+    const imported = await import(url.href);
+    const command = imported.default || imported;
 
     if (
         !command.data ||
@@ -341,19 +294,17 @@ export async function reloadCommand(client, commandName) {
         typeof command.data.toJSON !== 'function'
     ) {
         throw new Error(
-            'Reloaded command is invalid: ' + commandName
+            'The reloaded command is invalid: ' + commandName
         );
     }
 
-    command.category = oldCommand.category;
-    command.filePath = oldCommand.filePath;
+    command.category = previous.category;
+    command.filePath = previous.filePath;
 
     client.commands.delete(commandName);
     client.commands.set(command.data.name, command);
 
-    logger.info(
-        'Reloaded command: ' + command.data.name
-    );
+    logger.info('Reloaded command: ' + command.data.name);
 
     return command;
 }
