@@ -4,6 +4,7 @@ import { logger } from '../../utils/logger.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    dmEnabled: true,
     data: new SlashCommandBuilder()
     .setName("uptime")
     .setDescription("Check how long the bot has been online"),
