@@ -102,6 +102,8 @@ function resolveOutcome(activity, wallet) {
 }
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('slut')
         .setDescription('Take a risky provocative job for random payout or loss'),
