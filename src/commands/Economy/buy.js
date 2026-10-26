@@ -9,6 +9,8 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 const SHOP_ITEMS = shopItems;
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('buy')
         .setDescription('Buy an item from the shop')
