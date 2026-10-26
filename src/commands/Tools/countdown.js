@@ -17,7 +17,7 @@ export default {
         .addIntegerOption((option) =>
             option
                 .setName("minutes")
-                .setDescription("Number of minutes to count down (0-1440)")
+                .setDescription("Number of minutes to count down (0-14400)")
                 .setMinValue(0)
                 .setMaxValue(1440)
                 .setRequired(false),
