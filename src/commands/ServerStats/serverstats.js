@@ -11,6 +11,8 @@ import { handleDelete } from './modules/serverstats_delete.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName("serverstats")
         .setDescription("Manage server statistics that track member counts and channel data")
