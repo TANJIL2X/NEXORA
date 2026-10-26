@@ -6,6 +6,8 @@ import { getColor } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName("shorten")
         .setDescription("Shorten a URL using is.gd")
