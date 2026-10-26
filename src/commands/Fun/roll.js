@@ -5,6 +5,8 @@ import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
     .setName("roll")
     .setDescription("Rolls dice using standard notation (e.g., 2d20, 1d6 + 5).")
