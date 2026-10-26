@@ -140,6 +140,7 @@ async function updateConfigFile(currencySymbol, currencyName) {
 }
 
 export default {
+    dmEnabled: true,
     prefixOnly: false,
     async execute(interaction, config, client) {
         try {
