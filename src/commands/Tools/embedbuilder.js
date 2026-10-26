@@ -1039,6 +1039,8 @@ async function handleJsonExport(selectInteraction, rootInteraction, state) {
 }
 
 export default {
+    dmEnabled: true,
+    
     slashOnly: true,
     data: new SlashCommandBuilder()
         .setName('embedbuilder')
