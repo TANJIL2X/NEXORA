@@ -7,6 +7,8 @@ const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const EMBED_DESCRIPTION_LIMIT = 4096;
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
     .setName("fight")
     .setDescription("Starts a simulated 1v1 text-based battle.")
