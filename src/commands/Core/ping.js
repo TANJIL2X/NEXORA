@@ -4,6 +4,7 @@ import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 export default {
+    dmEnabled: true,
     data: new SlashCommandBuilder()
         .setName("ping")
         .setDescription("Checks the bot's latency and API speed"),
