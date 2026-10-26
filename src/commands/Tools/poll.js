@@ -6,6 +6,8 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 const EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 const MAX_OPTIONS = 10;
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('poll')
         .setDescription('Create a simple poll with up to 10 options')
