@@ -7,6 +7,8 @@ const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName("weather")
         .setDescription("Get real-time weather information for a location")
