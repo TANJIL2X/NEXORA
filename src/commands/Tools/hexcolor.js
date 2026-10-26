@@ -6,6 +6,8 @@ import { getColor } from '../../config/bot.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('hexcolor')
         .setDescription('Generate a random hex color with preview')
