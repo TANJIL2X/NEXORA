@@ -24,6 +24,8 @@ const WORK_JOBS = [
 ];
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('work')
         .setDescription('Work to earn some money'),
