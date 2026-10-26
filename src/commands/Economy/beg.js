@@ -11,6 +11,8 @@ const MAX_WIN = Number(botConfig?.economy?.begMax) || 200;
 const SUCCESS_CHANCE = 0.7;
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('beg')
         .setDescription('Beg for a small amount of money'),
