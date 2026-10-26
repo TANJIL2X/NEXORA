@@ -94,7 +94,9 @@ function formatBigIntToBase(value, baseKey) {
     return output;
 }
 
-export default {
+export default 
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('baseconvert')
         .setDescription('Convert numbers between different bases')
