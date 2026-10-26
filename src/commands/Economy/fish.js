@@ -30,6 +30,8 @@ const CATCH_MESSAGES = [
 ];
 
 export default {
+    dmEnabled: true,
+    
     data: new SlashCommandBuilder()
         .setName('fish')
         .setDescription('Go fishing to catch fish and earn money'),
